@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>排句成段挑戰</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --success-color: #2ec4b6;
+            --danger-color: #e71d36;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 15px;
+            color: #333;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-top: 10px;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            resize: vertical;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+            font-family: monospace;
+            font-size: 16px;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input[type="number"], input[type="file"] {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .timer {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--danger-color);
+        }
+
+        .game-columns {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .column {
+            flex: 1;
+            background: #f1f3f5;
+            padding: 10px;
+            border-radius: 8px;
+            min-height: 350px;
+            position: relative;
+        }
+
+        .column h3 {
+            margin-top: 5px;
+            text-align: center;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .sentence-box {
+            background: var(--card-bg);
+            border: 1px solid #dee2e6;
+            padding: 14px 10px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            cursor: grab;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            display: flex;
+            align-items: center;
+            touch-action: none;
+            position: relative;
+            z-index: 10;
+        }
+
+        .sentence-box.dragging {
+            opacity: 0.6;
+            background: #e3fafc;
+            border-color: #99e9f2;
+        }
+
+        .sentence-index {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 10px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .text-content {
+            font-size: 15px;
+            line-height: 1.4;
+            pointer-events: none;
+        }
+
+        .drop-zone {
+            border: 2px dashed #ced4da;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            min-height: 52px;
+            background: #fff;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            padding: 2px;
+        }
+
+        .drop-zone.hover {
+            border-color: var(--primary-color);
+            background-color: #e8f4fd;
+        }
+
+        .result-message {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .correct { color: var(--success-color); }
+        .incorrect { color: var(--danger-color); }
+
+        .answer-display {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            display: none;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        .action-btns {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .action-btns.multiple {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        /* 總結報告樣式優化 */
+        .summary-report {
+            margin-top: 25px;
+            text-align: left;
+            background: #fdfdfd;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .summary-item {
+            padding: 12px;
+            border-bottom: 1px solid #edf2f7;
+            font-size: 15px;
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .summary-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            margin-right: 5px;
+        }
+
+        .tag-correct { background-color: var(--success-color); }
+        .tag-incorrect { background-color: var(--danger-color); }
+        .tag-unanswered { background-color: #a0aec0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 1. 後台設定頁面 -->
+    <div id="setup-page" class="page active">
+        <h2>遊戲後台問題設定</h2>
+        <div class="form-group">
+            <label for="questions-input">輸入題目設定（答案數量|打亂的句子1|打亂的句子2|答案1）：</label>
+            <textarea id="questions-input" placeholder="例：&#10;1|我想去公園散步|今天天氣很好|2;1"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="file-upload">或上傳 txt 設定檔：</label>
+            <input type="file" id="file-upload" accept=".txt">
+        </div>
+        <button onclick="goToPlayerHome()">進入遊戲（玩家首頁）</button>
+    </div>
+
+    <!-- 2. 玩家首頁 -->
+    <div id="player-home-page" class="page">
+        <h1>排句成段挑戰</h1>
+        <div class="form-group" style="max-width: 300px; margin: 40px auto;">
+            <label for="time-per-sentence">每句限時（秒，上限20秒）：</label>
+            <input type="number" id="time-per-sentence" value="10" min="1" max="20">
+        </div>
+        <button style="max-width: 300px; margin: 0 auto; display: block;" onclick="startGame()">開始挑戰</button>
+    </div>
+
+    <!-- 3. 遊戲主畫面 -->
+    <div id="game-page" class="page">
+        <div class="game-header">
+            <span id="question-progress" style="font-size: 18px; font-weight: bold;">題目：1 / 1</span>
+            <span id="timer" class="timer">剩餘時間：10s</span>
+        </div>
+        
+        <div class="game-columns">
+            <div class="column" id="left-column">
+                <h3>未選句子</h3>
+                <div id="left-box-container"></div>
+            </div>
+            <div class="column" id="right-column">
+                <h3>正確排序</h3>
+                <div id="right-zones-container"></div>
+            </div>
+        </div>
+
+        <div id="result-area">
+            <div id="result-text" class="result-message"></div>
+            <div id="answer-display" class="answer-display"></div>
+        </div>
+
+        <div id="game-actions" class="action-btns">
+            <button id="submit-btn" onclick="submitAnswer()">提交答案</button>
+        </div>
+    </div>
+
+    <!-- 4. 總結頁面 -->
+    <div id="summary-page" class="page">
+        <h2>挑戰結束！</h2>
+        <div id="summary-text" style="font-size: 20px; text-align: center; margin: 20px 0 10px 0; line-height: 1.6;"></div>
+        <div id="summary-report-area" class="summary-report"></div>
+        <button style="margin-top: 20px;" onclick="restartToSetup()">返回後台設定</button>
+    </div>
+</div>
+
+<script>
+    let questions = [];
+    let currentQuestionIdx = 0;
+    let timeLimitPerSentence = 10;
+    let currentTimer = null;
+    let timeLeft = 0;
+    
+    let hasCountedScoreForCurrent = false; 
+    let retryCount = 0; 
+    let score = { correct: 0, incorrect: 0 };
+    
+    // 用來儲存玩家每一題最終狀況的陣列
+    let playerAnswersLog = []; 
+
+    // 觸控核心變數
+    let activeDragElement = null;
+    let isMoving = false; 
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let originalParent = null;
+
+    document.getElementById('file-upload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('questions-input').value = e.target.result;
+        };
+        reader.readAsText(file);
+    });
+
+    function parseQuestions() {
+        const text = document.getElementById('questions-input').value.trim();
+        if(!text) return false;
+        
+        questions = [];
+        const lines = text.split('\n');
+        
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if(!line) continue;
+            
+            const parts = line.split('|');
+            if(parts.length < 3) continue; 
+
+            const answersCount = parseInt(parts[0]);
+            if (isNaN(answersCount) || answersCount <= 0 || answersCount >= parts.length) continue;
+
+            const correctAnswers = parts.slice(parts.length - answersCount);
+            const sentences = parts.slice(1, parts.length - answersCount);
+
+            if(sentences.length > 0 && correctAnswers.length > 0) {
+                questions.push({
+                    sentences: sentences,
+                    correctAnswers: correctAnswers.map(a => a.trim())
+                });
+            }
+        }
+        return questions.length > 0;
+    }
+
+    function showPage(pageId) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+    }
+
+    function goToPlayerHome() {
+        if(!parseQuestions()) {
+            alert('題目解析失敗！請檢查格式是否正確。\n正確格式：答案數量|句子1|句子2|答案1');
+            return;
+        }
+        showPage('player-home-page');
+    }
+
+    function startGame() {
+        let timeInput = parseInt(document.getElementById('time-per-sentence').value);
+        if(isNaN(timeInput) || timeInput < 1) timeInput = 10;
+        if(timeInput > 20) timeInput = 20; 
+        timeLimitPerSentence = timeInput;
+
+        currentQuestionIdx = 0;
+        score = { correct: 0, incorrect: 0 };
+        retryCount = 0;
+        hasCountedScoreForCurrent = false;
+        playerAnswersLog = []; // 清空上一次的紀錄
+        
+        showPage('game-page');
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        clearInterval(currentTimer);
+        document.getElementById('result-text').innerHTML = '';
+        document.getElementById('answer-display').style.display = 'none';
+        document.getElementById('game-actions').innerHTML = '<button id="submit-btn" onclick="submitAnswer()">提交答案</button>';
+
+        const q = questions[currentQuestionIdx];
+        document.getElementById('question-progress').innerText = `題目：${currentQuestionIdx + 1} / ${questions.length}`;
+
+        let baseTime = q.sentences.length * timeLimitPerSentence;
+        timeLeft = (retryCount > 0) ? Math.floor(baseTime / 2) : baseTime;
+        updateTimerDisplay();
+
+        currentTimer = setInterval(() => {
+            timeLeft--;
+            updateTimerDisplay();
+            if(timeLeft <= 0) {
+                clearInterval(currentTimer);
+                handleTimeOut();
+            }
+        }, 1000);
+
+        const leftContainer = document.getElementById('left-box-container');
+        leftContainer.innerHTML = '';
+        
+        q.sentences.forEach((text, idx) => {
+            const currentVisualIndex = (idx + 1).toString();
+            const box = document.createElement('div');
+            box.className = 'sentence-box';
+            box.id = `box-${currentVisualIndex}`;
+            box.dataset.id = currentVisualIndex;
+            box.dataset.order = idx; 
+            
+            box.innerHTML = `<span class="sentence-index">${currentVisualIndex}</span> <span class="text-content">${text}</span>`;
+            
+            bindTouchEvents(box);
+            leftContainer.appendChild(box);
+        });
+
+        const rightContainer = document.getElementById('right-zones-container');
+        rightContainer.innerHTML = '';
+        for(let i = 0; i < q.sentences.length; i++) {
+            const zone = document.createElement('div');
+            zone.className = 'drop-zone';
+            zone.dataset.index = i;
+            rightContainer.appendChild(zone);
+        }
+    }
+
+    function updateTimerDisplay() {
+        document.getElementById('timer').innerText = `剩餘時間：${timeLeft}s`;
+    }
+
+    function bindTouchEvents(el) {
+        let lastTap = 0;
+
+        el.addEventListener('touchstart', function(e) {
+            let currentTime = new Date().getTime();
+            let tapLength = currentTime - lastTap;
+            
+            if (tapLength < 300 && tapLength > 0) {
+                e.preventDefault(); 
+                handleElementDoubleTap(el);
+                activeDragElement = null;
+                isMoving = false;
+                return;
+            }
+            lastTap = currentTime;
+
+            if (e.touches.length === 1) {
+                activeDragElement = el;
+                isMoving = false; 
+                const touch = e.touches[0];
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                originalParent = el.parentElement;
+                
+                const rect = el.getBoundingClientRect();
+                el.dataset.offsetX = touch.clientX - rect.left;
+                el.dataset.offsetY = touch.clientY - rect.top;
+            }
+        }, { passive: false });
+
+        el.addEventListener('touchmove', function(e) {
+            if (!activeDragElement || activeDragElement !== el) return;
+            
+            const touch = e.touches[0];
+            const moveX = Math.abs(touch.clientX - touchStartX);
+            const moveY = Math.abs(touch.clientY - touchStartY);
+            
+            if (moveX > 5 || moveY > 5) {
+                isMoving = true;
+            }
+
+            if (!isMoving) return;
+
+            e.preventDefault(); 
+            
+            el.classList.add('dragging');
+            el.style.position = 'fixed';
+            el.style.left = (touch.clientX - parseFloat(el.dataset.offsetX)) + 'px';
+            el.style.top = (touch.clientY - parseFloat(el.dataset.offsetY)) + 'px';
+            el.style.width = (originalParent.clientWidth - 22) + 'px';
+
+            let elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+            if(elementUnderTouch) {
+                let zone = elementUnderTouch.closest('.drop-zone');
+                document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('hover'));
+                if (zone && zone.children.length === 0) {
+                    zone.classList.add('hover');
+                }
+            }
+        }, { passive: false });
+
+        el.addEventListener('touchend', function(e) {
+            if (!activeDragElement || activeDragElement !== el) return;
+            
+            if (!isMoving) {
+                cleanupStyles(el);
+                activeDragElement = null;
+                return;
+            }
+
+            cleanupStyles(el);
+
+            const touch = e.changedTouches[0];
+            let elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+            document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('hover'));
+
+            if (elementUnderTouch) {
+                let zone = elementUnderTouch.closest('.drop-zone');
+                let leftCol = elementUnderTouch.closest('#left-column');
+
+                if (zone && zone.children.length === 0) {
+                    zone.appendChild(el);
+                } else if (leftCol) {
+                    returnToLeft(el);
+                } else {
+                    if (originalParent.classList.contains('drop-zone')) {
+                        originalParent.appendChild(el);
+                    } else {
+                        returnToLeft(el);
+                    }
+                }
+            } else {
+                if (originalParent.classList.contains('drop-zone')) {
+                    originalParent.appendChild(el);
+                } else {
+                    returnToLeft(el);
+                }
+            }
+            
+            activeDragElement = null;
+            isMoving = false;
+        });
+    }
+
+    function cleanupStyles(el) {
+        el.classList.remove('dragging');
+        el.style.position = '';
+        el.style.left = '';
+        el.style.top = '';
+        el.style.width = '';
+    }
+
+    function handleElementDoubleTap(box) {
+        if (box.parentElement.classList.contains('drop-zone')) {
+            returnToLeft(box);
+        } else {
+            moveLeftToRight(box);
+        }
+    }
+
+    function moveLeftToRight(box) {
+        const zones = Array.from(document.querySelectorAll('#right-zones-container .drop-zone'));
+        zones.sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
+        
+        for (let zone of zones) {
+            if (zone.children.length === 0) {
+                zone.appendChild(box);
+                break;
+            }
+        }
+    }
+
+    function returnToLeft(box) {
+        if(!box) return;
+        const leftContainer = document.getElementById('left-box-container');
+        leftContainer.appendChild(box);
+        
+        const boxes = Array.from(leftContainer.querySelectorAll('.sentence-box'));
+        boxes.sort((a, b) => parseInt(a.dataset.order) - parseInt(b.dataset.order));
+        boxes.forEach(b => leftContainer.appendChild(b));
+    }
+
+    function getPlayerSequence() {
+        const zones = Array.from(document.querySelectorAll('#right-zones-container .drop-zone'));
+        zones.sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
+        let seq = [];
+        zones.forEach(zone => {
+            if(zone.children.length > 0) {
+                seq.push(zone.children[0].dataset.id);
+            } else {
+                seq.push('');
+            }
+        });
+        return seq;
+    }
+
+    // 將序列號轉化為文字串聯以便在報告中展示
+    function getPlayerTextSequence(playerSeq, q) {
+        if (playerSeq.includes('') || playerSeq.length === 0) return "未作答";
+        return playerSeq.map(num => q.sentences[parseInt(num) - 1]).join(' → ');
+    }
+
+    function submitAnswer() {
+        clearInterval(currentTimer);
+        const playerSeq = getPlayerSequence();
+        
+        if(playerSeq.includes('')) {
+            alert('請把所有句子放置好再提交！');
+            currentTimer = setInterval(() => {
+                timeLeft--; updateTimerDisplay();
+                if(timeLeft<=0){ clearInterval(currentTimer); handleTimeOut(); }
+            }, 1000);
+            return;
+        }
+
+        const playerStr = playerSeq.join(';');
+        const q = questions[currentQuestionIdx];
+        const isCorrect = q.correctAnswers.includes(playerStr);
+        
+        // 紀錄當前提交的答案與文字
+        playerAnswersLog[currentQuestionIdx] = {
+            status: isCorrect ? 'correct' : 'incorrect',
+            text: getPlayerTextSequence(playerSeq, q)
+        };
+
+        if(isCorrect) {
+            handleCorrect();
+        } else {
+            handleIncorrect();
+        }
+    }
+
+    function handleTimeOut() {
+        document.getElementById('result-text').innerHTML = '<span class="incorrect">❌ 時間到！</span>';
+        
+        const q = questions[currentQuestionIdx];
+        // 如果時間到且未曾有有效紀錄，則寫入未作答
+        if (!playerAnswersLog[currentQuestionIdx]) {
+            playerAnswersLog[currentQuestionIdx] = { status: 'unanswered', text: '未作答' };
+        }
+
+        if (!hasCountedScoreForCurrent) {
+            score.incorrect++;
+            hasCountedScoreForCurrent = true;
+        }
+
+        if (retryCount < 1) {
+            showFailureActions();
+        } else {
+            forceRevealAndProceed();
+        }
+    }
+
+    function handleCorrect() {
+        if (!hasCountedScoreForCurrent && retryCount === 0) {
+            score.correct++;
+        }
+        hasCountedScoreForCurrent = true;
+        
+        document.getElementById('result-text').innerHTML = '<span class="correct">✔️ 完全正確！</span>';
+        showSuccessActions();
+    }
+
+    function handleIncorrect() {
+        if (!hasCountedScoreForCurrent) {
+            score.incorrect++;
+            hasCountedScoreForCurrent = true;
+        }
+
+        document.getElementById('result-text').innerHTML = '<span class="incorrect">❌ 排序不正確！</span>';
+        
+        if (retryCount < 1) {
+            showFailureActions();
+        } else {
+            forceRevealAndProceed();
+        }
+    }
+
+    function showSuccessActions() {
+        const actionsContainer = document.getElementById('game-actions');
+        actionsContainer.className = "action-btns";
+        const isLast = currentQuestionIdx === questions.length - 1;
+        
+        if(!isLast) {
+            actionsContainer.innerHTML = `<button onclick="nextQuestion()">下一題</button>`;
+        } else {
+            actionsContainer.innerHTML = `<button onclick="showSummary()">總結</button>`;
+        }
+    }
+
+    function showFailureActions() {
+        const actionsContainer = document.getElementById('game-actions');
+        actionsContainer.className = "action-btns multiple";
+        actionsContainer.innerHTML = `
+            <button style="background-color: #ff9f1c;" onclick="retryQuestion()">重試 (剩 1 次)</button>
+            <button style="background-color: #6c757d;" onclick="revealAnswerButtonHandler()">顯示答案</button>
+        `;
+    }
+
+    function retryQuestion() {
+        retryCount++;
+        document.getElementById('game-actions').className = "action-btns";
+        loadQuestion();
+    }
+
+    function revealAnswerButtonHandler() {
+        // 點選顯示答案等同放棄此題重試，若沒作答紀錄則保持未作答
+        if (!playerAnswersLog[currentQuestionIdx]) {
+            playerAnswersLog[currentQuestionIdx] = { status: 'unanswered', text: '未作答' };
+        }
+        forceRevealAndProceed();
+    }
+
+    function forceRevealAndProceed() {
+        clearInterval(currentTimer);
+        const q = questions[currentQuestionIdx];
+        const displayDiv = document.getElementById('answer-display');
+        
+        let answerText = "<strong>正確排序：</strong><br>";
+        q.correctAnswers.forEach((ans, idx) => {
+            answerText += `選項 ${idx + 1}: ${ans.split(';').join(' → ')}<br>`;
+        });
+
+        const firstCorrectSeq = q.correctAnswers[0].split(';'); 
+        let textParagraph = "";
+        firstCorrectSeq.forEach(num => {
+            textParagraph += q.sentences[parseInt(num) - 1] + " ";
+        });
+
+        displayDiv.innerHTML = `
+            ${answerText}<br>
+            <strong>示範段落（選項1）：</strong><br>${textParagraph}
+        `;
+        displayDiv.style.display = 'block';
+
+        const actionsContainer = document.getElementById('game-actions');
+        actionsContainer.className = "action-btns";
+        const isLast = currentQuestionIdx === questions.length - 1;
+        
+        if(!isLast) {
+            actionsContainer.innerHTML = `<button onclick="nextQuestion()">下一題</button>`;
+        } else {
+            actionsContainer.innerHTML = `<button onclick="showSummary()">總結</button>`;
+        }
+    }
+
+    function nextQuestion() {
+        retryCount = 0;
+        hasCountedScoreForCurrent = false;
+        currentQuestionIdx++;
+        loadQuestion();
+    }
+
+    function showSummary() {
+        showPage('summary-page');
+        document.getElementById('summary-text').innerHTML = `
+            本輪挑戰已完成！<br>
+            答對題數：<span class="correct">${score.correct}</span> 題 | 
+            答錯題數：<span class="incorrect">${score.incorrect}</span> 題
+        `;
+
+        // 渲染詳細答題報告
+        const reportArea = document.getElementById('summary-report-area');
+        reportArea.innerHTML = '';
+
+        questions.forEach((q, idx) => {
+            const log = playerAnswersLog[idx] || { status: 'unanswered', text: '未作答' };
+            let tagHTML = '';
+            
+            if (log.status === 'correct') {
+                tagHTML = `<span class="summary-tag tag-correct">正確</span>`;
+            } else if (log.status === 'incorrect') {
+                tagHTML = `<span class="summary-tag tag-incorrect">錯誤</span>`;
+            } else {
+                tagHTML = `<span class="summary-tag tag-unanswered">未作答</span>`;
+            }
+
+            const item = document.createElement('div');
+            item.className = 'summary-item';
+            
+            // 獲取標準正確答案文字供對比
+            const firstCorrectSeq = q.correctAnswers[0].split(';');
+            const correctText = firstCorrectSeq.map(num => q.sentences[parseInt(num) - 1]).join(' → ');
+
+            item.innerHTML = `
+                <strong>第 ${idx + 1} 題：</strong> ${tagHTML}<br>
+                <div style="margin: 5px 0 2px 0; color: #555;">你的答案：<span style="color: ${log.status === 'correct' ? 'var(--success-color)' : (log.status === 'incorrect' ? 'var(--danger-color)' : '#718096')}">${log.text}</span></div>
+                <div style="color: #888; font-size: 13px;">正確答案：${correctText}</div>
+            `;
+            reportArea.appendChild(item);
+        });
+    }
+
+    function restartToSetup() {
+        showPage('setup-page');
+    }
+</script>
+
+</body>
+</html>

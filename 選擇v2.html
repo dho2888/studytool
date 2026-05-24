@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Multiple-Choice Vocabulary Quiz Builder</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ca8a04;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 750px;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #0f172a;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        input[type="text"], input[type="number"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+
+        textarea {
+            resize: vertical;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .hint {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-top: 4px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary { background-color: var(--text-light); }
+        .btn-secondary:hover { background-color: #475569; }
+        .btn-warning { background-color: var(--warning); }
+        .btn-warning:hover { background-color: #a16207; }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .quiz-header {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        .progress {
+            font-weight: 600;
+            color: var(--text-light);
+            text-align: left;
+        }
+
+        .quiz-header-right {
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+        }
+
+        .score-display {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        #live-points-display {
+            font-weight: 800;
+            font-size: 24px;
+            line-height: 1;
+        }
+
+        #timer {
+            font-size: 20px;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 20px;
+            background: #f1f5f9;
+            justify-self: center;
+            transition: all 0.2s;
+        }
+
+        #timer.warning {
+            color: white;
+            background-color: var(--danger);
+            animation: flash 1s infinite;
+        }
+
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .meaning-box {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #f8fafc;
+            border-left: 4px solid var(--primary);
+            border-radius: 0 6px 6px 0;
+        }
+
+        .choices-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .choice-btn {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 14px 20px;
+            background-color: #ffffff;
+            color: var(--text);
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 0;
+        }
+
+        .choice-btn:hover:not(:disabled) {
+            background-color: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .choice-btn:disabled {
+            cursor: not-allowed;
+        }
+
+        .choice-letter {
+            font-weight: 700;
+            background: #f1f5f9;
+            padding: 4px 10px;
+            border-radius: 4px;
+            margin-right: 15px;
+            color: var(--primary);
+        }
+
+        .choice-btn.selected-correct {
+            background-color: #dcfce7;
+            border-color: var(--success);
+            color: #15803d;
+        }
+        .choice-btn.selected-correct .choice-letter {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .choice-btn.selected-wrong {
+            background-color: #fee2e2;
+            border-color: var(--danger);
+            color: #b91c1c;
+        }
+        .choice-btn.selected-wrong .choice-letter {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .choice-btn.reveal-truth {
+            border-color: var(--success);
+            background-color: #f0fdf4;
+        }
+
+        .feedback-box {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            display: none;
+        }
+
+        .feedback-box.correct {
+            display: flex;
+            background-color: #dcfce7;
+            color: #15803d;
+        }
+
+        .feedback-box.wrong {
+            display: flex;
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .summary-stats {
+            display: flex;
+            justify-content: space-around;
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background-color: #f8fafc;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        tr.row-correct { background-color: #f0fdf4; }
+        tr.row-wrong { background-color: #fef2f2; }
+        
+        .text-muted-italic {
+            color: var(--text-light);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Home / Setup Screen -->
+    <div id="home-screen" class="screen active">
+        <h1 id="setup-main-title">MC Quiz Configuration</h1>
+        
+        <div class="form-group">
+            <label for="input-title">Quiz Title:</label>
+            <input text" id="input-title" value="Vocabulary Multiple Choice Quiz">
+        </div>
+
+        <div class="form-group">
+            <label for="input-vocab-list">Vocabulary List (Vocab | Meaning):</label>
+            <textarea id="input-vocab-list" rows="8" placeholder="Word | Definition goes here..."></textarea>
+            <div class="hint">Enter one vocabulary pair per line. Separate the word and its meaning using the "|" character. Minimum 4 items required for multiple choice selection pool.</div>
+        </div>
+
+        <div class="form-group">
+            <label id="label-questions" for="input-questions">Number of Questions:</label>
+            <input type="number" id="input-questions" min="0" value="0">
+        </div>
+
+        <div class="form-group">
+            <label for="input-time">Time Limit per Question (seconds, Max 60):</label>
+            <input type="number" id="input-time" min="5" max="60" value="30">
+        </div>
+
+        <button id="start-btn">Start MCQ Quiz</button>
+    </div>
+
+    <!-- Quiz Screen -->
+    <div id="quiz-screen" class="screen">
+        <h1 id="quiz-dynamic-title">Vocabulary Quiz</h1>
+        
+        <div class="quiz-header">
+            <div class="progress">
+                <div>Question: <span id="current-q">1</span>/<span id="total-q">12</span></div>
+                <div class="score-display">Total Score: <span id="current-score">0</span></div>
+            </div>
+            
+            <div id="timer">30</div>
+            
+            <div class="quiz-header-right">
+                <div id="live-points-display">5</div>
+            </div>
+        </div>
+
+        <div class="meaning-box" id="meaning-display">
+            Meaning text goes here...
+        </div>
+
+        <div class="choices-grid" id="choices-container">
+            <button class="choice-btn" data-index="0"><span class="choice-letter">A</span><span class="choice-text">Option Text</span></button>
+            <button class="choice-btn" data-index="1"><span class="choice-letter">B</span><span class="choice-text">Option Text</span></button>
+            <button class="choice-btn" data-index="2"><span class="choice-letter">C</span><span class="choice-text">Option Text</span></button>
+            <button class="choice-btn" data-index="3"><span class="choice-letter">D</span><span class="choice-text">Option Text</span></button>
+        </div>
+
+        <div class="feedback-box" id="feedback">
+            <span id="feedback-icon"></span> <span id="feedback-text">Feedback details</span>
+        </div>
+
+        <div class="btn-group">
+            <button id="retry-btn" class="btn-warning" style="display: none;">Retry (1 Left)</button>
+            <button id="show-answer-btn" class="btn-secondary" style="display: none;">Show Answer</button>
+        </div>
+        <button id="next-btn" style="display: none;">Next</button>
+        <button id="summary-btn" style="display: none;">View Summary</button>
+    </div>
+
+    <!-- Summary Screen -->
+    <div id="summary-screen" class="screen">
+        <h2 id="summary-dynamic-title">Quiz Summary</h2>
+        <div class="summary-stats">
+            <div>Final Score: <span id="final-score">0</span></div>
+            <div>Accuracy: <span id="final-accuracy">0</span>%</div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Meaning (Definition)</th>
+                        <th>Correct Answer</th>
+                        <th>Your Choice</th>
+                        <th>Result</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody id="summary-table-body">
+                    <!-- Results appended dynamically -->
+                </tbody>
+            </table>
+        </div>
+        <button id="restart-btn">Try Again / Restart</button>
+    </div>
+</div>
+
+<script>
+    // Audio configuration 
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playBeep() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = 880; 
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+    }
+
+    // App State Configuration
+    let activeVocabularyDatabase = [];
+    let quizPool = [];
+    let currentQuestionIndex = 0;
+    let totalQuestionsSetting = 0;
+    let totalTimeSetting = 30;
+    let timeRemaining = 30;
+    let timerInterval = null;
+    let currentScore = 0;
+    let retryAttempted = false;
+    let quizResults = [];
+    let currentChoicesText = []; 
+    let correctPositionSequence = [];
+
+    // DOM Engine Layout Binding References
+    const homeScreen = document.getElementById('home-screen');
+    const quizScreen = document.getElementById('quiz-screen');
+    const summaryScreen = document.getElementById('summary-screen');
+    
+    const inputTitle = document.getElementById('input-title');
+    const inputVocabList = document.getElementById('input-vocab-list');
+    const inputQuestions = document.getElementById('input-questions');
+    const inputTime = document.getElementById('input-time');
+    const startBtn = document.getElementById('start-btn');
+    const labelQuestions = document.getElementById('label-questions');
+
+    const quizDynamicTitle = document.getElementById('quiz-dynamic-title');
+    const summaryDynamicTitle = document.getElementById('summary-dynamic-title');
+    const currentQEl = document.getElementById('current-q');
+    const totalQEl = document.getElementById('total-q');
+    const timerEl = document.getElementById('timer');
+    const scoreEl = document.getElementById('current-score');
+    const livePointsDisplay = document.getElementById('live-points-display');
+    const meaningDisplay = document.getElementById('meaning-display');
+    const choiceButtons = document.querySelectorAll('.choice-btn');
+    const feedbackEl = document.getElementById('feedback');
+    const feedbackIcon = document.getElementById('feedback-icon');
+    const feedbackText = document.getElementById('feedback-text');
+
+    const retryBtn = document.getElementById('retry-btn');
+    const showAnswerBtn = document.getElementById('show-answer-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const summaryBtn = document.getElementById('summary-btn');
+    
+    const finalScoreEl = document.getElementById('final-score');
+    const finalAccuracyEl = document.getElementById('final-accuracy');
+    const summaryTableBody = document.getElementById('summary-table-body');
+    const restartBtn = document.getElementById('restart-btn');
+
+    inputVocabList.addEventListener('input', parseInputData);
+    startBtn.addEventListener('click', startQuiz);
+    retryBtn.addEventListener('click', handleRetry);
+    showAnswerBtn.addEventListener('click', handleShowAnswer);
+    nextBtn.addEventListener('click', nextQuestion);
+    summaryBtn.addEventListener('click', showSummary);
+    restartBtn.addEventListener('click', resetToHome);
+    
+    choiceButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const selectedIdx = parseInt(btn.getAttribute('data-index'));
+            evaluateMCQChoice(selectedIdx, btn);
+        });
+    });
+
+    function parseInputData() {
+        const text = inputVocabList.value;
+        const lines = text.split("\n");
+        activeVocabularyDatabase = [];
+
+        lines.forEach(line => {
+            if (line.includes('|')) {
+                const parts = line.split('|');
+                const word = parts[0].trim();
+                const meaning = parts.slice(1).join('|').trim(); 
+                if (word && meaning) {
+                    activeVocabularyDatabase.push({ word, meaning });
+                }
+            }
+        });
+
+        const totalParsed = activeVocabularyDatabase.length;
+        labelQuestions.innerText = `Number of Questions (Max ${totalParsed}):`;
+        inputQuestions.max = totalParsed;
+        
+        if(totalParsed > 0) {
+            inputQuestions.value = Math.min(12, totalParsed);
+        } else {
+            inputQuestions.value = 0;
+        }
+    }
+
+    function shuffle(array) {
+        let currentIndex = array.length, randomIndex;
+        while (currentIndex != 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        }
+        return array;
+    }
+
+    function buildEvenPositionMap(totalQuestions) {
+        const sequence = [];
+        for (let i = 0; i < totalQuestions; i++) {
+            sequence.push(i % 4);
+        }
+        return shuffle(sequence);
+    }
+
+    function startQuiz() {
+        parseInputData(); 
+        if (activeVocabularyDatabase.length < 4) {
+            alert("Please input at least 4 valid vocabulary pairs to generate choices for multiple choice questions.");
+            return;
+        }
+
+        let qCount = parseInt(inputQuestions.value);
+        let tLimit = parseInt(inputTime.value);
+
+        if (isNaN(qCount) || qCount < 1) qCount = Math.min(12, activeVocabularyDatabase.length);
+        if (qCount > activeVocabularyDatabase.length) qCount = activeVocabularyDatabase.length;
+        if (isNaN(tLimit) || tLimit < 5) tLimit = 30;
+        if (tLimit > 60) tLimit = 60;
+
+        totalQuestionsSetting = qCount;
+        totalTimeSetting = tLimit;
+        currentScore = 0;
+        currentQuestionIndex = 0;
+        quizResults = [];
+
+        correctPositionSequence = buildEvenPositionMap(totalQuestionsSetting);
+
+        const customizedTitle = inputTitle.value.trim() || "Vocabulary MCQ Quiz";
+        quizDynamicTitle.innerText = customizedTitle;
+        summaryDynamicTitle.innerText = customizedTitle + " - Summary";
+
+        let copyData = [...activeVocabularyDatabase];
+        shuffle(copyData);
+        quizPool = copyData.slice(0, totalQuestionsSetting);
+
+        homeScreen.classList.remove('active');
+        quizScreen.classList.add('active');
+        
+        totalQEl.innerText = totalQuestionsSetting;
+        scoreEl.innerText = currentScore;
+
+        loadQuestion();
+    }
+
+    function calculateScore(timeSpent) {
+        if (timeSpent <= 6) return 5;
+        if (timeSpent <= 12) return 4;
+        if (timeSpent <= 18) return 3;
+        if (timeSpent <= 24) return 2;
+        return 1;
+    }
+
+    function updateLiveScoreDisplay() {
+        const timeSpent = totalTimeSetting - timeRemaining;
+        const potentialScore = calculateScore(timeSpent);
+        livePointsDisplay.innerText = potentialScore;
+        
+        switch(potentialScore) {
+            case 5: livePointsDisplay.style.color = "#064e3b"; break;
+            case 4: livePointsDisplay.style.color = "#16a34a"; break;
+            case 3: livePointsDisplay.style.color = "#ca8a04"; break;
+            case 2: livePointsDisplay.style.color = "#ea580c"; break;
+            case 1: livePointsDisplay.style.color = "#dc2626"; break;
+        }
+    }
+
+    function loadQuestion() {
+        clearInterval(timerInterval);
+        retryAttempted = false;
+        
+        currentQEl.innerText = currentQuestionIndex + 1;
+        const correctQuestionObject = quizPool[currentQuestionIndex];
+        meaningDisplay.innerText = correctQuestionObject.meaning;
+
+        feedbackEl.className = "feedback-box";
+        feedbackEl.style.display = "none";
+        retryBtn.style.display = "none";
+        showAnswerBtn.style.display = "none";
+        nextBtn.style.display = "none";
+        summaryBtn.style.display = "none";
+
+        const targetCorrectIndex = correctPositionSequence[currentQuestionIndex];
+        currentChoicesText = [];
+        const wrongPool = activeVocabularyDatabase.filter(item => item.word !== correctQuestionObject.word);
+        shuffle(wrongPool);
+
+        let wrongCount = 0;
+        for (let i = 0; i < 4; i++) {
+            if (i === targetCorrectIndex) {
+                currentChoicesText.push(correctQuestionObject.word);
+            } else {
+                currentChoicesText.push(wrongPool[wrongCount].word);
+                wrongCount++;
+            }
+        }
+
+        choiceButtons.forEach((btn, idx) => {
+            btn.className = "choice-btn"; 
+            btn.disabled = false;
+            btn.querySelector('.choice-text').innerText = currentChoicesText[idx];
+        });
+
+        timeRemaining = totalTimeSetting;
+        timerEl.innerText = timeRemaining;
+        timerEl.classList.remove('warning');
+        
+        updateLiveScoreDisplay();
+
+        timerInterval = setInterval(() => {
+            timeRemaining--;
+            timerEl.innerText = timeRemaining;
+            updateLiveScoreDisplay();
+
+            if (timeRemaining <= 5 && timeRemaining > 0) {
+                timerEl.classList.add('warning');
+                playBeep();
+            }
+            if (timeRemaining <= 0) {
+                clearInterval(timerInterval);
+                handleTimeOut();
+            }
+        }, 1000);
+    }
+
+    function evaluateMCQChoice(selectedIdx, selectedButton) {
+        clearInterval(timerInterval);
+        choiceButtons.forEach(btn => btn.disabled = true);
+
+        const targetCorrectIndex = correctPositionSequence[currentQuestionIndex];
+        const timeSpent = totalTimeSetting - timeRemaining;
+        const letterOptions = ['A', 'B', 'C', 'D'];
+        const chosenStringSummary = `${letterOptions[selectedIdx]} (${currentChoicesText[selectedIdx]})`;
+
+        if (selectedIdx === targetCorrectIndex) {
+            selectedButton.classList.add('selected-correct');
+            
+            const earnedPoints = calculateScore(timeSpent);
+            currentScore += earnedPoints;
+            scoreEl.innerText = currentScore;
+
+            feedbackEl.className = "feedback-box correct";
+            feedbackIcon.innerText = "✓";
+            feedbackText.innerText = `Correct! You earned ${earnedPoints} points.`;
+            feedbackEl.style.display = "flex";
+
+            quizResults.push({
+                meaning: quizPool[currentQuestionIndex].meaning,
+                word: quizPool[currentQuestionIndex].word,
+                playerChoice: chosenStringSummary,
+                result: "Correct",
+                score: earnedPoints
+            });
+
+            showNavigationControls();
+        } else {
+            selectedButton.classList.add('selected-wrong');
+            
+            feedbackEl.className = "feedback-box wrong";
+            feedbackIcon.innerText = "✗";
+            feedbackText.innerText = "Incorrect answer choice.";
+            feedbackEl.style.display = "flex";
+
+            if (!retryAttempted) {
+                // Temporary unlock variables tracking step data
+                window.lastWrongChoiceString = chosenStringSummary;
+                retryBtn.innerText = "Retry (1 Chance Left)";
+                retryBtn.style.display = "block";
+                showAnswerBtn.style.display = "block";
+            } else {
+                choiceButtons[targetCorrectIndex].classList.add('reveal-truth');
+                feedbackText.innerText = `Incorrect. The correct answer was option: ${letterOptions[targetCorrectIndex]}`;
+                
+                quizResults.push({
+                    meaning: quizPool[currentQuestionIndex].meaning,
+                    word: quizPool[currentQuestionIndex].word,
+                    playerChoice: chosenStringSummary,
+                    result: "Wrong",
+                    score: 0
+                });
+                showNavigationControls();
+            }
+        }
+    }
+
+    function handleRetry() {
+        retryAttempted = true;
+        feedbackEl.style.display = "none";
+        retryBtn.style.display = "none";
+        showAnswerBtn.style.display = "none";
+        
+        choiceButtons.forEach(btn => {
+            btn.className = "choice-btn";
+            btn.disabled = false;
+        });
+
+        timeRemaining = totalTimeSetting;
+        timerEl.innerText = timeRemaining;
+        timerEl.classList.remove('warning');
+        updateLiveScoreDisplay();
+        
+        timerInterval = setInterval(() => {
+            timeRemaining--;
+            timerEl.innerText = timeRemaining;
+            updateLiveScoreDisplay();
+
+            if (timeRemaining <= 5 && timeRemaining > 0) {
+                timerEl.classList.add('warning');
+                playBeep();
+            }
+            if (timeRemaining <= 0) {
+                clearInterval(timerInterval);
+                handleTimeOut();
+            }
+        }, 1000);
+    }
+
+    function handleShowAnswer() {
+        clearInterval(timerInterval);
+        const targetCorrectIndex = correctPositionSequence[currentQuestionIndex];
+        const letterOptions = ['A', 'B', 'C', 'D'];
+        
+        choiceButtons.forEach(btn => btn.disabled = true);
+        choiceButtons[targetCorrectIndex].classList.add('reveal-truth');
+
+        feedbackEl.className = "feedback-box wrong";
+        feedbackIcon.innerText = "ℹ";
+        feedbackText.innerText = `The correct answer is Option: ${letterOptions[targetCorrectIndex]} (${quizPool[currentQuestionIndex].word})`;
+        feedbackEl.style.display = "flex";
+
+        retryBtn.style.display = "none";
+        showAnswerBtn.style.display = "none";
+
+        // If they clicked "Show Answer" on retry, use their first wrong choice as what they tried. Otherwise, Not Answered.
+        const summaryAnswerText = retryAttempted ? window.lastWrongChoiceString : "Not Answered";
+
+        quizResults.push({
+            meaning: quizPool[currentQuestionIndex].meaning,
+            word: quizPool[currentQuestionIndex].word,
+            playerChoice: summaryAnswerText,
+            result: "Revealed",
+            score: 0
+        });
+
+        showNavigationControls();
+    }
+
+    function handleTimeOut() {
+        choiceButtons.forEach(btn => btn.disabled = true);
+        const targetCorrectIndex = correctPositionSequence[currentQuestionIndex];
+        const letterOptions = ['A', 'B', 'C', 'D'];
+        
+        feedbackEl.className = "feedback-box wrong";
+        feedbackIcon.innerText = "⏱";
+        feedbackText.innerText = "Time out!";
+        feedbackEl.style.display = "flex";
+
+        if (!retryAttempted) {
+            window.lastWrongChoiceString = "Not Answered";
+            retryBtn.innerText = "Retry (1 Chance Left)";
+            retryBtn.style.display = "block";
+            showAnswerBtn.style.display = "block";
+        } else {
+            choiceButtons[targetCorrectIndex].classList.add('reveal-truth');
+            feedbackText.innerText = `Time out. The correct answer was option: ${letterOptions[targetCorrectIndex]}`;
+            
+            const summaryAnswerText = retryAttempted ? window.lastWrongChoiceString : "Not Answered";
+            
+            quizResults.push({
+                meaning: quizPool[currentQuestionIndex].meaning,
+                word: quizPool[currentQuestionIndex].word,
+                playerChoice: summaryAnswerText,
+                result: "Timeout",
+                score: 0
+            });
+            showNavigationControls();
+        }
+    }
+
+    function showNavigationControls() {
+        const isLastQuestion = (currentQuestionIndex === totalQuestionsSetting - 1);
+        if (isLastQuestion) {
+            summaryBtn.style.display = "block";
+        } else {
+            nextBtn.style.display = "block";
+        }
+    }
+
+    function nextQuestion() {
+        currentQuestionIndex++;
+        loadQuestion();
+    }
+
+    function showSummary() {
+        quizScreen.classList.remove('active');
+        summaryScreen.classList.add('active');
+
+        finalScoreEl.innerText = currentScore;
+        
+        let correctCount = quizResults.filter(r => r.result === "Correct").length;
+        let accuracyPercent = Math.round((correctCount / totalQuestionsSetting) * 100);
+        finalAccuracyEl.innerText = accuracyPercent;
+
+        summaryTableBody.innerHTML = "";
+        quizResults.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = item.result === "Correct" ? "row-correct" : "row-wrong";
+            
+            const displayAns = item.playerChoice === "Not Answered" 
+                ? '<span class="text-muted-italic">Not Answered</span>' 
+                : `<span>${item.playerChoice}</span>`;
+
+            tr.innerHTML = `
+                <td>${item.meaning}</td>
+                <td><strong>${item.word}</strong></td>
+                <td>${displayAns}</td>
+                <td>${item.result}</td>
+                <td><strong>${item.score}</strong></td>
+            `;
+            summaryTableBody.appendChild(tr);
+        });
+    }
+
+    function resetToHome() {
+        summaryScreen.classList.remove('active');
+        homeScreen.classList.add('active');
+    }
+</script>
+
+</body>
+</html>

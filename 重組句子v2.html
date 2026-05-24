@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>萬用重組句子遊戲 (含玩家答案紀錄版)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f1c40f;
+            --bg-color: #f5f7fa;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0; padding: 15px;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+            -webkit-user-select: none;
+        }
+
+        .container {
+            background: white; padding: 25px; border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 100%; max-width: 950px; text-align: center;
+        }
+
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* 後台樣式 */
+        .config-area {
+            text-align: left; background: #f0f4f8; padding: 20px;
+            border-radius: 10px; margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%; height: 180px; margin-top: 5px; padding: 10px;
+            border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box;
+            font-size: 1rem; line-height: 1.5; font-family: monospace;
+        }
+        .file-input-label {
+            display: inline-block; background: #666; color: white;
+            padding: 8px 15px; border-radius: 5px; margin-top: 5px; cursor: pointer;
+        }
+
+        /* 玩家首頁樣式 */
+        .player-home-box {
+            background: #fff3cd; padding: 30px; border-radius: 12px;
+            margin: 20px 0; border: 2px solid #ffeeba;
+        }
+        input[type="number"] {
+            width: 120px; padding: 10px; border-radius: 5px;
+            border: 2px solid var(--primary-color); font-size: 1.2rem; text-align: center;
+            font-weight: bold;
+        }
+
+        /* 遊戲頁面樣式 */
+        .game-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px; background: #f8f9fa; padding: 10px 15px; border-radius: 8px;
+        }
+        #quiz-info, #score-info { font-size: 1.2rem; color: #444; font-weight: bold; }
+        #timer { font-size: 2.2rem; font-weight: bold; color: var(--danger-color); margin-bottom: 20px; transition: transform 0.1s; }
+        .timer-warn { animation: blink 0.5s infinite alternate; color: #ff0000 !important; transform: scale(1.1); }
+        
+        @keyframes blink {
+            from { opacity: 1; } to { opacity: 0.6; }
+        }
+
+        .word-zone {
+            min-height: 100px; background: #f9f9f9; border: 2px dashed #bbb;
+            border-radius: 10px; padding: 15px; display: flex; flex-wrap: wrap;
+            gap: 12px; margin-bottom: 20px; box-sizing: border-box;
+        }
+        #target-zone { border: 2.5px solid var(--primary-color); background: #fff; }
+        .word-box {
+            background: white; border: 2px solid #ddd; padding: 12px 20px;
+            border-radius: 8px; font-size: 1.3rem; touch-action: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .word-box:active { transform: scale(0.95); }
+        .sortable-ghost { opacity: 0.3; background: #e0e0e0; }
+
+        button {
+            background-color: var(--primary-color); color: white; border: none;
+            padding: 15px 35px; font-size: 1.2rem; border-radius: 8px; font-weight: bold;
+            cursor: pointer; margin: 5px;
+        }
+        .secondary-btn { background-color: #95a5a6; }
+        .retry-btn { background-color: var(--warning-color); color: #333; }
+        .reveal-btn { background-color: #e67e22; }
+
+        .result-icon { font-size: 5rem; margin-bottom: 10px; }
+        .success { color: var(--success-color); }
+        .danger { color: var(--danger-color); }
+        .score-hint { font-size: 1.4rem; color: #e67e22; font-weight: bold; margin-bottom: 15px; }
+
+        /* 參考答案容器 */
+        .ans-container {
+            text-align:left; background:#f0f4f8; padding:20px; border-radius:8px; margin-bottom: 25px;
+        }
+        .ans-item { margin-top: 5px; font-size: 1.2rem; line-height: 1.6; display: block; }
+        .blurred-text {
+            filter: blur(6px);
+            background: #ddd;
+            color: transparent;
+            user-select: none;
+            border-radius: 4px;
+        }
+
+        /* 總結報表樣式 */
+        .summary-table { width: 100%; border-collapse: collapse; margin-top: 20px; text-align: left; font-size: 0.95rem; }
+        .summary-table th, .summary-table td { border: 1px solid #ddd; padding: 12px; vertical-align: top; }
+        .summary-table th { background-color: #f4f6f9; font-weight: bold; }
+        .status-badge { padding: 4px 8px; border-radius: 4px; color: white; font-weight: bold; font-size: 0.9rem; }
+        .badge-success { background-color: var(--success-color); }
+        .badge-danger { background-color: var(--danger-color); }
+        
+        .user-ans-text { font-weight: bold; }
+        .text-success { color: var(--success-color); }
+        .text-danger { color: var(--danger-color); font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 第一版：老師設定後台 -->
+    <div id="config-page" class="page active">
+        <h1>重組句子 - 教師設定後台</h1>
+        <div class="config-area">
+            <label for="raw-input">請輸入教材題目（一行一題）：</label>
+            <small style="color:#666; display:block; margin-bottom:8px;">
+                格式：詞語碎片 <strong>|答案數量|</strong> 答案一 <strong>|</strong> 答案二 (選填) <span style="color: #27ae60;">(提示：英文單字前後不需刻意加空格囉！)</span>
+            </small>
+            <textarea id="raw-input"></textarea>
+            
+            <div style="border-top: 1px solid #ddd; margin-top: 15px; padding-top: 15px;">
+                <label>或讀取 iPad 設定檔 (CSV/TXT)：</label>
+                <input type="file" id="file-selector" accept=".csv,.txt" style="display:none;">
+                <label for="file-selector" class="file-input-label">從裝置選取檔案</label>
+                <div id="file-status" style="font-size: 0.9rem; color: #666; margin-top:5px;">未選擇檔案</div>
+            </div>
+        </div>
+        <button id="config-done-btn">完成設定 (進入玩家首頁)</button>
+    </div>
+
+    <!-- 第二版：玩家首頁 -->
+    <div id="player-home-page" class="page">
+        <h1>歡迎來到重組句子挑戰！</h1>
+        <p style="font-size: 1.2rem; color: #555;">題目已經準備就緒，請設定你的挑戰速度。</p>
+        
+        <div class="player-home-box">
+            <label for="timer-input" style="font-size: 1.3rem;">每組詞語限時（秒）：</label>
+            <p><small style="color:#666;">* 預設為 5 秒，上限最高為 10 秒（不計算標點符號時間）</small></p>
+            <input type="number" id="timer-input" value="5" min="2" max="10">
+        </div>
+        
+        <button id="start-game-btn" style="background-color: var(--success-color); font-size: 1.5rem; padding: 18px 50px;">開始挑戰！</button>
+        <button class="secondary-btn" onclick="switchPage('config-page')" style="display:block; margin: 20px auto 0 auto; padding: 8px 20px; font-size: 1rem;">返回後台修改題目</button>
+    </div>
+
+    <!-- 第三版：遊戲頁面 -->
+    <div id="game-page" class="page">
+        <div class="game-header">
+            <div id="quiz-info">第 <span id="current-question-num">1</span> 題 / 共 <span id="total-questions-num">1</span> 題</div>
+            <div id="score-info">目前得分：<span id="live-score" style="color: #e67e22;">0</span> 分</div>
+        </div>
+        <div id="timer">剩餘時間：-- 秒</div>
+        <p style="color:#777; font-size:0.9rem; margin-top:-10px;">💡 小技巧：除了拖曳，快速「連按兩下 (雙擊)」詞語方塊也能快速移動喔！</p>
+        <div class="word-zone" id="word-pool"></div>
+        <div class="word-zone" id="target-zone"></div>
+        <button id="submit-btn">提交答案</button>
+    </div>
+
+    <!-- 第四版：單題結果檢查頁面 -->
+    <div id="result-page" class="page">
+        <div id="result-icon"></div>
+        <h2 id="result-msg"></h2>
+        <div id="score-gain-msg" class="score-hint"></div>
+        
+        <div class="ans-container">
+            <strong>參考答案：</strong>
+            <div id="correct-ans-list"></div>
+        </div>
+        
+        <button id="retry-btn" class="retry-btn" style="display:none;">重試此題 (時間減半)</button>
+        <button id="reveal-btn" class="reveal-btn" style="display:none;">查看正確答案 (將無法重試)</button>
+        <button id="next-btn">下一題</button>
+    </div>
+
+    <!-- 第五版：總結統計頁面 -->
+    <div id="summary-page" class="page">
+        <h1>測試完畢！挑戰總結</h1>
+        <h2 style="color: #333; margin-bottom: 5px;">總得分：<span style="color:#e67e22; font-size: 2.5rem;"><span id="final-total-score">0</span></span> 分</h2>
+        <p style="font-size: 1.2rem; color: #666;">答對 <span id="correct-count" class="success">0</span> 題 / 答錯 <span id="wrong-count" class="danger">0</span> 題</p>
+        
+        <div style="overflow-x: auto;">
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th style="width: 8%;">狀態</th>
+                        <th style="width: 27%;">詞語碎片</th>
+                        <th style="width: 32%;">玩家的具體答案</th>
+                        <th style="width: 33%;">所有接受的參考答案</th>
+                    </tr>
+                </thead>
+                <tbody id="summary-table-body"></tbody>
+            </table>
+        </div>
+        <button id="restart-btn" class="secondary-btn" style="margin-top: 25px;">重新開始 (保留當前題目)</button>
+    </div>
+</div>
+
+<script>
+    // 專為 iPad / iOS 優化的發聲系統
+    let audioCtx = null;
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    function playBeep(frequency, duration) {
+        try {
+            initAudio();
+            if (!audioCtx) return;
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.frequency.value = frequency;
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            oscillator.start();
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+            oscillator.stop(audioCtx.currentTime + duration);
+        } catch (e) {
+            console.log("Audio Error:", e);
+        }
+    }
+
+    // 遊戲核心數據
+    let questions = []; 
+    let currentQuestionIndex = 0;
+    let totalScore = 0;
+
+    let timePerWord = 5;       
+    let currentMaxTime = 60;   
+    let timeLeft = 60;
+    let timerInt;
+    let sortableP, sortableT;
+    let isRetryRound = false; 
+
+    const punctuationRegex = /^[\s,.\-\/#!$%\^&\*;:{}=\-_`~()？。，！；：、「」『』《》（）——……]+$/;
+
+    const fileSelector = document.getElementById('file-selector');
+    const fileStatus = document.getElementById('file-status');
+    const rawInput = document.getElementById('raw-input');
+    const timerInput = document.getElementById('timer-input');
+
+    fileSelector.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        fileStatus.textContent = "已載入設定檔：" + file.name;
+        const reader = new FileReader();
+        reader.onload = (event) => { rawInput.value = event.target.result.trim(); };
+        reader.readAsText(file);
+    });
+
+    function switchPage(pageId) {
+        document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+    }
+
+    // 教師設定後台「完成設定」
+    document.getElementById('config-done-btn').addEventListener('click', () => {
+        initAudio(); 
+        questions = [];
+        const lines = rawInput.value.split('\n').map(line => line.trim()).filter(line => line !== "");
+        
+        for (let line of lines) {
+            const data = line.split('|').map(s => s.trim()).filter(s => s !== "");
+            if (data.length >= 3) {
+                let countIndex = -1;
+                for (let i = data.length - 2; i >= 0; i--) {
+                    if (!isNaN(data[i]) && data[i] !== "") {
+                        countIndex = i;
+                        break;
+                    }
+                }
+                
+                if (countIndex !== -1) {
+                    const words = data.slice(0, countIndex);
+                    const ansCount = parseInt(data[countIndex], 10);
+                    const answers = data.slice(countIndex + 1, countIndex + 1 + ansCount);
+                    
+                    const validWordCount = words.filter(w => !punctuationRegex.test(w)).length;
+                    
+                    if (answers.length > 0) {
+                        questions.push({ 
+                            words: words, 
+                            answers: answers, 
+                            validWordCount: validWordCount || 1, 
+                            userResult: null,
+                            userAnswerText: "未作答" // 新增：預設為未作答
+                        });
+                    }
+                }
+            }
+        }
+        
+        if (questions.length > 0) {
+            switchPage('player-home-page');
+        } else {
+            alert("題目格式不對哦！請確保包含「答案數量」及對應數量的「參考答案」。");
+        }
+    });
+
+    // 玩家頁面點擊「開始挑戰」
+    document.getElementById('start-game-btn').addEventListener('click', () => {
+        initAudio(); 
+        let val = parseInt(timerInput.value, 10) || 5;
+        if (val > 10) {
+            alert("每組詞語限時最高為 10 秒！");
+            timerInput.value = 10;
+            return;
+        }
+        if (val < 2) {
+            alert("每組詞語限時不能少於 2 秒！");
+            timerInput.value = 2;
+            return;
+        }
+        
+        timePerWord = val;
+        currentQuestionIndex = 0;
+        totalScore = 0;
+        document.getElementById('live-score').textContent = totalScore;
+        
+        isRetryRound = false;
+        loadQuestion(currentQuestionIndex);
+        switchPage('game-page');
+        startTimer();
+    });
+
+    function loadQuestion(index) {
+        const q = questions[index];
+        document.getElementById('current-question-num').textContent = index + 1;
+        document.getElementById('total-questions-num').textContent = questions.length;
+
+        if (!isRetryRound) {
+            currentMaxTime = q.validWordCount * timePerWord;
+        } else {
+            currentMaxTime = Math.floor((q.validWordCount * timePerWord) / 2);
+        }
+
+        if(sortableP) sortableP.destroy();
+        if(sortableT) sortableT.destroy();
+        
+        const poolZone = document.getElementById('word-pool');
+        const targetZone = document.getElementById('target-zone');
+        poolZone.innerHTML = '';
+        targetZone.innerHTML = '';
+        
+        const shuffled = [...q.words].sort(() => Math.random() - 0.5);
+        shuffled.forEach(w => {
+            const div = document.createElement('div');
+            div.className = 'word-box';
+            div.textContent = w;
+            
+            // 綁定雙擊事件
+            div.addEventListener('dblclick', function(e) {
+                e.preventDefault();
+                if (div.parentNode === poolZone) {
+                    targetZone.appendChild(div);
+                } else if (div.parentNode === targetZone) {
+                    poolZone.appendChild(div);
+                }
+            });
+
+            // 行動裝置觸控雙擊支援
+            let lastTap = 0;
+            div.addEventListener('touchend', function(e) {
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+                if (tapLength < 300 && tapLength > 0) {
+                    e.preventDefault();
+                    if (div.parentNode === poolZone) {
+                        targetZone.appendChild(div);
+                    } else if (div.parentNode === targetZone) {
+                        poolZone.appendChild(div);
+                    }
+                }
+                lastTap = currentTime;
+            });
+
+            poolZone.appendChild(div);
+        });
+
+        const opt = { group: 'sentence-game', animation: 150, ghostClass: 'sortable-ghost' };
+        sortableP = Sortable.create(poolZone, opt);
+        sortableT = Sortable.create(targetZone, opt);
+    }
+
+    function startTimer() {
+        timeLeft = currentMaxTime;
+        updateTimerUI();
+        
+        timerInt = setInterval(() => {
+            timeLeft--;
+            updateTimerUI();
+            
+            if (timeLeft <= 10 && timeLeft > 0) {
+                playBeep(880, 0.08); 
+                document.getElementById('timer').classList.add('timer-warn');
+            }
+            
+            if (timeLeft <= 0) {
+                playBeep(440, 0.4); 
+                document.getElementById('timer').classList.remove('timer-warn');
+                checkAnswer(true); 
+            }
+        }, 1000);
+    }
+
+    function updateTimerUI() {
+        document.getElementById('timer').textContent = "剩餘時間：" + timeLeft + " 秒";
+    }
+
+    // 核對答案
+    function checkAnswer(isTimeOut = false) {
+        clearInterval(timerInt);
+        document.getElementById('timer').classList.remove('timer-warn');
+        initAudio(); 
+        
+        const q = questions[currentQuestionIndex];
+        const boxes = [...document.getElementById('target-zone').querySelectorAll('.word-box')];
+        
+        // 抓取玩家當前的重組內容（如果是英文，自動用空白聯結方便閱讀，若空無一物則顯示未作答）
+        let rawUserAnsText = boxes.map(b => b.textContent).join(' ');
+        // 修正多餘空格，使其看起來像正常句子
+        rawUserAnsText = rawUserAnsText.replace(/\s+/g, ' ').trim();
+        
+        if (boxes.length === 0) {
+            q.userAnswerText = "未作答";
+        } else {
+            q.userAnswerText = rawUserAnsText;
+        }
+
+        // 進行無空格比對邏輯
+        const userCombinedText = boxes.map(b => b.textContent).join('');
+        const userCompareString = userCombinedText.replace(/\s+/g, ''); 
+        
+        let isCorrect = false;
+        if (!isTimeOut && boxes.length > 0) {
+            isCorrect = q.answers.some(ans => {
+                const ansCompareString = ans.replace(/\s+/g, '');
+                return userCompareString === ansCompareString;
+            });
+        }
+        
+        const icon = document.getElementById('result-icon');
+        const msg = document.getElementById('result-msg');
+        const scoreGainMsg = document.getElementById('score-gain-msg');
+        const retryBtn = document.getElementById('retry-btn');
+        const revealBtn = document.getElementById('reveal-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const ansListContainer = document.getElementById('correct-ans-list');
+
+        retryBtn.style.display = 'none';
+        revealBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+        ansListContainer.innerHTML = '';
+
+        q.answers.forEach((ans, idx) => {
+            const span = document.createElement('span');
+            span.className = "ans-item";
+            span.textContent = (q.answers.length > 1 ? `【答案 ${idx+1}】` : "") + ans;
+            ansListContainer.appendChild(span);
+        });
+
+        if (isCorrect) {
+            [...ansListContainer.children].forEach(el => el.classList.remove('blurred-text'));
+
+            const timeUsed = currentMaxTime - timeLeft;
+            let earnedPoints = 1;
+            
+            if (timeUsed <= currentMaxTime * (1/3)) { earnedPoints = 5; }
+            else if (timeUsed <= currentMaxTime * (1/2)) { earnedPoints = 4; }
+            else if (timeUsed <= currentMaxTime * (2/3)) { earnedPoints = 3; }
+            else if (timeUsed <= currentMaxTime * (3/4)) { earnedPoints = 2; }
+            
+            totalScore += earnedPoints;
+            document.getElementById('live-score').textContent = totalScore;
+            q.userResult = 'correct';
+
+            icon.textContent = "✓"; icon.className = "result-icon success";
+            msg.textContent = "完全正確！";
+            scoreGainMsg.textContent = `你在限時內快速完成，獲得 ${earnedPoints} 分！`;
+            
+            showNavigationButtons();
+        } else {
+            q.userResult = 'wrong'; 
+            icon.textContent = "✗"; icon.className = "result-icon danger";
+            msg.textContent = isTimeOut ? "時間到！" : "答案不正確哦！";
+            scoreGainMsg.textContent = "此題得 0 分。";
+
+            if (!isRetryRound) {
+                [...ansListContainer.children].forEach(el => el.classList.add('blurred-text'));
+                retryBtn.style.display = 'inline-block';
+                revealBtn.style.display = 'inline-block';
+            } else {
+                [...ansListContainer.children].forEach(el => el.classList.remove('blurred-text'));
+                showNavigationButtons();
+            }
+        }
+
+        switchPage('result-page');
+    }
+
+    document.getElementById('reveal-btn').addEventListener('click', () => {
+        const ansListContainer = document.getElementById('correct-ans-list');
+        [...ansListContainer.children].forEach(el => el.classList.remove('blurred-text'));
+        
+        document.getElementById('retry-btn').style.display = 'none';   
+        document.getElementById('reveal-btn').style.display = 'none';  
+        
+        showNavigationButtons(); 
+    });
+
+    function showNavigationButtons() {
+        const nextBtn = document.getElementById('next-btn');
+        nextBtn.style.display = 'inline-block';
+        
+        if (currentQuestionIndex === questions.length - 1) {
+            nextBtn.textContent = "查看總結";
+            nextBtn.style.backgroundColor = "#9b59b6"; 
+        } else {
+            nextBtn.textContent = "下一題";
+            nextBtn.style.backgroundColor = "var(--primary-color)";
+        }
+    }
+
+    // 重試此題
+    document.getElementById('retry-btn').addEventListener('click', () => {
+        isRetryRound = true; 
+        loadQuestion(currentQuestionIndex);
+        switchPage('game-page');
+        startTimer();
+    });
+
+    // 下一題
+    document.getElementById('next-btn').addEventListener('click', () => {
+        if (currentQuestionIndex < questions.length - 1) {
+            currentQuestionIndex++;
+            isRetryRound = false;         
+            
+            loadQuestion(currentQuestionIndex);
+            switchPage('game-page');
+            startTimer();
+        } else {
+            showSummaryPage();
+        }
+    });
+
+    // 總結統計（新增玩家具體答案欄位）
+    function showSummaryPage() {
+        document.getElementById('final-total-score').textContent = totalScore;
+        
+        let finalCorrect = 0;
+        let finalWrong = 0;
+        questions.forEach(q => {
+            if(q.userResult === 'correct') finalCorrect++; else finalWrong++;
+        });
+        
+        document.getElementById('correct-count').textContent = finalCorrect;
+        document.getElementById('wrong-count').textContent = finalWrong;
+
+        const tbody = document.getElementById('summary-table-body');
+        tbody.innerHTML = ''; 
+
+        questions.forEach(q => {
+            const tr = document.createElement('tr');
+            
+            // 狀態欄
+            const tdStatus = document.createElement('td');
+            tdStatus.innerHTML = q.userResult === 'correct' ? 
+                '<span class="status-badge badge-success">對</span>' : '<span class="status-badge badge-danger">錯</span>';
+            
+            // 題目碎片欄
+            const tdWords = document.createElement('td');
+            tdWords.textContent = q.words.join('  |  ');
+            
+            // 新增：玩家的具體答案欄
+            const tdUserAns = document.createElement('td');
+            tdUserAns.className = "user-ans-text";
+            if (q.userAnswerText === "未作答") {
+                tdUserAns.innerHTML = `<span class="text-danger">${q.userAnswerText}</span>`;
+            } else {
+                if (q.userResult === 'correct') {
+                    tdUserAns.innerHTML = `<span class="text-success">${q.userAnswerText}</span>`;
+                } else {
+                    tdUserAns.innerHTML = `<span class="text-danger">${q.userAnswerText}</span>`;
+                }
+            }
+            
+            // 參考答案欄
+            const tdAns = document.createElement('td');
+            tdAns.innerHTML = q.answers.map((a, i) => `${q.answers.length > 1 ? (i+1)+'. ' : ''}${a}`).join('<br>');
+
+            tr.appendChild(tdStatus); 
+            tr.appendChild(tdWords); 
+            tr.appendChild(tdUserAns); // 插入具體答案
+            tr.appendChild(tdAns);
+            tbody.appendChild(tr);
+        });
+
+        switchPage('summary-page');
+    }
+
+    // 「重新開始」
+    document.getElementById('restart-btn').addEventListener('click', () => {
+        switchPage('config-page');
+    });
+
+    // 提交按鈕
+    document.getElementById('submit-btn').addEventListener('click', () => {
+        checkAnswer(false);
+    });
+</script>
+</body>
+</html>
